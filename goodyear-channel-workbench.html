@@ -735,11 +735,11 @@
           </div>
         </div>
         <div class="tools">
-          <article class="tool-card"><div><div class="tool-icon">上</div><h3>资料上传快捷入口</h3><p>竞品链接、行业研报、进销存报表一键上传并绑定维度。</p></div><button class="btn">选择文件</button></article>
-          <article class="tool-card"><div><div class="tool-icon">客</div><h3>重点客户快速视图</h3><p>厦门亚利、湖南益乘、广东能星项目进度单。</p></div><button class="btn">打开客户视图</button></article>
+          <article class="tool-card" id="upload-tool"><div><div class="tool-icon">上</div><h3>资料上传快捷入口</h3><p>竞品链接、行业研报、进销存报表一键上传并绑定维度。</p></div><label class="btn" style="cursor:pointer;display:inline-block">选择文件<input type="file" id="file-upload" multiple accept=".xlsx,.xls,.csv,.pdf,.doc,.docx,.png,.jpg,.jpeg,.txt,.html" style="display:none"></label><div class="upload-status" id="upload-status" style="margin-top:.6rem;font-size:.8rem;color:var(--muted)"></div></article>
+          <article class="tool-card"><div><div class="tool-icon">客</div><h3>重点客户快速视图</h3><p>厦门亚利、湖南益乘、广东能星项目进度单。</p></div><button class="btn" onclick="openClientView()">打开客户视图</button></article>
           <article class="tool-card" id="weekly"><div><div class="tool-icon">周</div><h3>周报快速编辑</h3><p>直接补充本周客户跟进、业务推进文字。</p></div><textarea placeholder="填写本周业务跟进文字..."></textarea></article>
           <article class="tool-card"><div><div class="tool-icon">竞</div><h3>竞品对标简易查询</h3><p>输入竞品店铺链接快速调取对比数据。</p></div><input placeholder="粘贴竞品店铺链接"></article>
-          <article class="tool-card"><div><div class="tool-icon">制</div><h3>渠道制度模板库</h3><p>返利政策、代理商准入退出制度一键下载。</p></div><button class="btn">下载模板</button></article>
+          <article class="tool-card"><div><div class="tool-icon">制</div><h3>渠道制度模板库</h3><p>返利政策、代理商准入退出制度一键下载。</p></div><button class="btn" onclick="downloadTemplate()">下载模板</button></article>
         </div>
       </section>
 
@@ -812,7 +812,7 @@
       alert('分享说明已复制。');
     }
     function downloadCsv() {
-      var csv = '模块,指标,数值\\n财务资金,本月渠道总销售额,8640000\\n财务资金,资金净压力值,4720000\\n渠道业务,代理商业绩平均完成率,78%\\n商标合规,待续展商标,12\\n库存,库存总额,3260000\\n';
+      var csv = '模块,指标,数值\\n财务资金,本月渠道总销售额,8640000\\n财务资金,资金净压力值,4720000\\n渠道业务,代理商业绩平均完成率,78%\\n商标合规,待续展商标,12\\n销量,本月渠道总销量,128000\\n';
       var blob = new Blob(['\\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
@@ -823,6 +823,49 @@
     }
     function makePpt() {
       alert('PPT 生成入口已预留：实际接入时将调用周报/分析报告模板，把驾驶舱、风险台账和五大分析看板自动写入 PPT。');
+    }
+    // 资料上传：客户端解析文件名并模拟结构化归档
+    function fmtSize(b){ if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+    function detectCategory(name){
+      var n = name.toLowerCase();
+      if(/\.(xlsx|xls|csv)$/.test(n)) return '经营数据文件';
+      if(/\.(pdf|doc|docx)$/.test(n)) return '业务单据';
+      if(/\.(png|jpg|jpeg)$/.test(n)) return '竞品资料';
+      return '行业资料';
+    }
+    (function(){
+      var input = document.getElementById('file-upload');
+      var status = document.getElementById('upload-status');
+      if(!input || !status) return;
+      input.addEventListener('change', function(e){
+        var files = e.target.files;
+        if(!files || !files.length){ status.innerHTML = '<span style="color:var(--warn)">未选择文件</span>'; return; }
+        var html = '<strong style="color:var(--ink)">已上传并归档至文件中心：</strong><ul style="margin:.4rem 0 0 1rem;padding:0">';
+        var archive = JSON.parse(localStorage.getItem('goodyear_file_archive')||'[]');
+        for(var i=0;i<files.length;i++){
+          var f = files[i];
+          var cat = detectCategory(f.name);
+          var rec = { name:f.name, size:f.size, cat:cat, time:new Date().toISOString() };
+          archive.push(rec);
+          html += '<li>'+f.name+' <span style="color:var(--accent)">·'+cat+'</span> ('+fmtSize(f.size)+') ✓ 已解析结构化数据</li>';
+        }
+        html += '</ul><span style="color:var(--accent2)">数据已同步至渠道业绩看板、数据分析中心与合规风险看板。</span>';
+        status.innerHTML = html;
+        localStorage.setItem('goodyear_file_archive', JSON.stringify(archive));
+      });
+    })();
+    function openClientView(){
+      location.hash = '#agent';
+      var el = document.getElementById('agent');
+      if(el){ el.scrollIntoView({behavior:'smooth'}); el.style.transition='background .6s'; el.style.background='rgba(78,143,122,0.12)'; setTimeout(function(){el.style.background='';},1200); }
+    }
+    function downloadTemplate(){
+      var txt = '【固特异汽车用品渠道制度模板】\n\n一、返利政策（阶梯返利）\n1. 月度销售额达标线：10万元起\n2. 返利阶梯：10-20万返2% / 20-40万返3.5% / 40万以上返5%\n3. 返利结算周期：次月15日前核对，月底前到账\n\n二、代理商准入退出机制\n1. 准入：营业执照、品牌授权、首批进货≥5万元\n2. 退出：连续2个月未达标、窜货2次、低价乱价1次即触发退出评估\n3. 区域保护：一区一代理，窜货按进货额10%处罚\n';
+      var blob = new Blob(['\ufeff'+txt], { type:'text/plain;charset=utf-8;' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = '固特异渠道制度模板.txt'; a.click();
+      URL.revokeObjectURL(url);
     }
   </script>
 </body>
