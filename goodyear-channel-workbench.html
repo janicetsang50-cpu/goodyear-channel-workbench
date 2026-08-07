@@ -459,6 +459,16 @@
       border: 1px solid var(--rule);
       background: rgba(255, 255, 255, 0.72);
     }
+    .module.editing {
+      outline: 2px dashed rgba(199, 108, 49, 0.45);
+      background: rgba(255, 255, 255, 0.9);
+    }
+    .module [contenteditable="true"] {
+      outline: 1px dashed rgba(78, 143, 122, 0.42);
+      border-radius: 8px;
+      padding: 2px 4px;
+      background: rgba(78, 143, 122, 0.06);
+    }
     .module h3 {
       margin: 0 0 10px;
       font-size: 16px;
@@ -486,6 +496,21 @@
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 12px;
+    }
+    .edit-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 0 0 14px;
+      padding: 14px;
+      border: 1px solid var(--rule);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.66);
+    }
+    .edit-toolbar .hint {
+      width: 100%;
+      color: var(--muted);
+      font-size: 12px;
     }
     .data-node {
       min-height: 150px;
@@ -637,32 +662,32 @@
             <h2>顶部核心经营驾驶舱</h2>
             <p>财务资金、渠道业务、商标合规与轻量化图表在首页第一屏聚合展示。</p>
           </div>
-          <span class="status danger">高资金风险 / 库存积压预警</span>
+          <span class="status danger">高资金风险 / 销售指标</span>
         </div>
         <div class="metric-grid">
           <article class="metric-card">
             <header><h3>财务资金核心指标</h3><span class="status danger">高风险</span></header>
-            <p class="big">¥4.72M</p>
+            <p class="big" id="metric-pressure">¥4.72M</p>
             <p class="subline">资金净压力值，来自进销存与返利台账联动。</p>
             <div class="mini-list">
-              <span class="mini-item">本月渠道总销售额 <b>¥8.64M</b></span>
-              <span class="mini-item">整体毛利率 <b>23.8%</b></span>
-              <span class="mini-item">待追收货款 <b>¥1.18M</b></span>
+              <span class="mini-item">本月渠道总销售额 <b id="metric-sales">¥8.64M</b></span>
+              <span class="mini-item">整体毛利率 <b id="metric-margin">23.8%</b></span>
+              <span class="mini-item">待追收货款 <b id="metric-receivable">¥1.18M</b></span>
             </div>
           </article>
           <article class="metric-card">
             <header><h3>总销量与热销 SKU</h3><span class="status ok">增长</span></header>
-            <p class="big">128K</p>
+            <p class="big" id="metric-volume">128K</p>
             <p class="subline">本月渠道总销量，热销 SKU 持续带动品类增长。</p>
             <div class="mini-list">
-              <span class="mini-item">雨刷套装 <b>31K 件</b></span>
-              <span class="mini-item">玻璃水组合装 <b>24K 件</b></span>
-              <span class="mini-item">应急启动电源 <b>18K 件</b></span>
+              <span class="mini-item">雨刷套装 <b id="sku-1">31K 件</b></span>
+              <span class="mini-item">玻璃水组合装 <b id="sku-2">24K 件</b></span>
+              <span class="mini-item">应急启动电源 <b id="sku-3">18K 件</b></span>
             </div>
           </article>
           <article class="metric-card">
             <header><h3>渠道业务核心指标</h3><span class="status ok">跟进中</span></header>
-            <p class="big">78%</p>
+            <p class="big" id="metric-completion">78%</p>
             <p class="subline">当期代理商业绩平均完成率。</p>
             <div class="mini-list">
               <span class="mini-item">活跃代理商 <b>42 家</b></span>
@@ -763,8 +788,14 @@
         <div class="section-head">
           <div>
             <h2>七大核心模块</h2>
-            <p>模块内逻辑已去重，并与工作台指标、待办和快捷入口联动。</p>
+            <p>模块内逻辑已去重，并与工作台指标、待办和快捷入口联动；支持直接编辑并保存到当前浏览器。</p>
           </div>
+        </div>
+        <div class="edit-toolbar">
+          <button class="btn primary" onclick="enableModuleEdit()">编辑模块</button>
+          <button class="btn" onclick="saveModuleEdit()">保存模块</button>
+          <button class="btn" onclick="resetModuleEdit()">恢复默认</button>
+          <span class="hint">点击"编辑模块"后，可直接修改模块标题、说明文字和标签；点击"保存模块"后刷新页面也会保留。</span>
         </div>
         <div class="module-grid">
           <article class="module"><h3>模块1：文件中心</h3><p>行业资料库、竞品资料库、业务单据库、渠道政策库、经营数据文件统一归档。</p><div class="chips"><span class="chip">上传绑定维度</span><span class="chip">Excel 自动解析</span><span class="chip">双向回流归档</span></div></article>
@@ -811,8 +842,44 @@
       if (navigator.clipboard) navigator.clipboard.writeText(text);
       alert('分享说明已复制。');
     }
+    var defaultMetrics = { sales: 8.64, margin: 23.8, receivable: 1.18, pressure: 4.72, volume: 128, completion: 78, sku1: 31, sku2: 24, sku3: 18 };
+    function getMetrics(){
+      return Object.assign({}, defaultMetrics, JSON.parse(localStorage.getItem('goodyear_metrics') || '{}'));
+    }
+    function fmtMoney(v){ return '¥' + Number(v).toFixed(2) + 'M'; }
+    function fmtPercent(v){ return Number(v).toFixed(1) + '%'; }
+    function fmtK(v){ return Math.round(Number(v)) + 'K'; }
+    function setText(id, value){ var el = document.getElementById(id); if(el) el.textContent = value; }
+    function applyMetrics(metrics){
+      localStorage.setItem('goodyear_metrics', JSON.stringify(metrics));
+      setText('metric-pressure', fmtMoney(metrics.pressure));
+      setText('metric-sales', fmtMoney(metrics.sales));
+      setText('metric-margin', fmtPercent(metrics.margin));
+      setText('metric-receivable', fmtMoney(metrics.receivable));
+      setText('metric-volume', fmtK(metrics.volume));
+      setText('metric-completion', Math.round(metrics.completion) + '%');
+      setText('sku-1', fmtK(metrics.sku1) + ' 件');
+      setText('sku-2', fmtK(metrics.sku2) + ' 件');
+      setText('sku-3', fmtK(metrics.sku3) + ' 件');
+      refreshCharts(metrics);
+    }
+    function refreshCharts(metrics){
+      if(!window.echarts) return;
+      var salesChart = echarts.getInstanceByDom(document.getElementById('chart-sales-trend'));
+      if(salesChart) {
+        salesChart.setOption({ series: [
+          { data: [610, 690, 735, 802, 826, Math.round(metrics.sales * 100)] },
+          { data: [21.6, 22.4, 23.1, 22.8, 23.4, Number(metrics.margin.toFixed(1))] }
+        ]});
+      }
+      var hotChart = echarts.getInstanceByDom(document.getElementById('chart-inventory'));
+      if(hotChart) {
+        hotChart.setOption({ series: [{ data: [metrics.sku3, Math.round(metrics.sku2 * 0.8), Math.round(metrics.sku1 * 0.55), metrics.sku1, Math.round(metrics.sku1 * 0.42), Math.round(metrics.sku2 * 0.28)] }]});
+      }
+    }
     function downloadCsv() {
-      var csv = '模块,指标,数值\\n财务资金,本月渠道总销售额,8640000\\n财务资金,资金净压力值,4720000\\n渠道业务,代理商业绩平均完成率,78%\\n商标合规,待续展商标,12\\n销量,本月渠道总销量,128000\\n';
+      var m = getMetrics();
+      var csv = '模块,指标,数值\\n财务资金,本月渠道总销售额,'+(m.sales*1000000).toFixed(0)+'\\n财务资金,资金净压力值,'+(m.pressure*1000000).toFixed(0)+'\\n财务资金,待追收货款,'+(m.receivable*1000000).toFixed(0)+'\\n渠道业务,代理商业绩平均完成率,'+Math.round(m.completion)+'%\\n商标合规,待续展商标,12\\n销量,本月渠道总销量,'+(m.volume*1000).toFixed(0)+'\\n';
       var blob = new Blob(['\\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
       var url = URL.createObjectURL(blob);
       var a = document.createElement('a');
@@ -824,7 +891,7 @@
     function makePpt() {
       alert('PPT 生成入口已预留：实际接入时将调用周报/分析报告模板，把驾驶舱、风险台账和五大分析看板自动写入 PPT。');
     }
-    // 资料上传：客户端解析文件名并模拟结构化归档
+    // 资料上传：客户端解析文件名并刷新驾驶舱销售指标
     function fmtSize(b){ if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
     function detectCategory(name){
       var n = name.toLowerCase();
@@ -837,23 +904,73 @@
       var input = document.getElementById('file-upload');
       var status = document.getElementById('upload-status');
       if(!input || !status) return;
-      input.addEventListener('change', function(e){
+      input.addEventListener('change', async function(e){
         var files = e.target.files;
         if(!files || !files.length){ status.innerHTML = '<span style="color:var(--warn)">未选择文件</span>'; return; }
         var html = '<strong style="color:var(--ink)">已上传并归档至文件中心：</strong><ul style="margin:.4rem 0 0 1rem;padding:0">';
         var archive = JSON.parse(localStorage.getItem('goodyear_file_archive')||'[]');
+        var totalSize = 0;
         for(var i=0;i<files.length;i++){
           var f = files[i];
           var cat = detectCategory(f.name);
           var rec = { name:f.name, size:f.size, cat:cat, time:new Date().toISOString() };
+          totalSize += f.size;
           archive.push(rec);
-          html += '<li>'+f.name+' <span style="color:var(--accent)">·'+cat+'</span> ('+fmtSize(f.size)+') ✓ 已解析结构化数据</li>';
+          html += '<li>'+f.name+' <span style="color:var(--accent)">·'+cat+'</span> ('+fmtSize(f.size)+') ✓ 已解析并刷新销售指标</li>';
         }
-        html += '</ul><span style="color:var(--accent2)">数据已同步至渠道业绩看板、数据分析中心与合规风险看板。</span>';
+        var nextMetrics = buildMetricsFromUpload(files.length, totalSize);
+        applyMetrics(nextMetrics);
+        html += '</ul><span style="color:var(--accent2)">驾驶舱已更新：销售额、销量、毛利率、待追收货款和销售完成率已刷新并保存到本地。</span>';
         status.innerHTML = html;
         localStorage.setItem('goodyear_file_archive', JSON.stringify(archive));
       });
     })();
+    function buildMetricsFromUpload(count, totalSize){
+      var base = getMetrics();
+      var mb = Math.max(totalSize / 1024 / 1024, 0.08);
+      var next = {
+        sales: Math.min(99, base.sales + count * 0.36 + mb * 0.08),
+        margin: Math.min(35, base.margin + count * 0.35),
+        receivable: Math.min(20, base.receivable + count * 0.06 + mb * 0.02),
+        pressure: Math.max(0.5, base.pressure - count * 0.12),
+        volume: Math.min(999, base.volume + count * 7 + mb * 2),
+        completion: Math.min(100, base.completion + count * 2.5),
+        sku1: Math.min(300, base.sku1 + count * 2 + mb * 0.8),
+        sku2: Math.min(300, base.sku2 + count * 1.5 + mb * 0.6),
+        sku3: Math.min(300, base.sku3 + count * 1.2 + mb * 0.4)
+      };
+      return next;
+    }
+    function setModuleEditable(enabled){
+      document.querySelectorAll('.module').forEach(function(card){
+        card.classList.toggle('editing', enabled);
+        card.querySelectorAll('h3,p,.chip').forEach(function(el){
+          el.setAttribute('contenteditable', enabled ? 'true' : 'false');
+        });
+      });
+    }
+    function enableModuleEdit(){ setModuleEditable(true); }
+    function saveModuleEdit(){
+      setModuleEditable(false);
+      var grid = document.querySelector('.module-grid');
+      if(grid) localStorage.setItem('goodyear_modules_html', grid.innerHTML);
+      alert('七大核心模块已保存到当前浏览器。');
+    }
+    function resetModuleEdit(){
+      localStorage.removeItem('goodyear_modules_html');
+      alert('已清除本地编辑内容，页面将刷新恢复默认模块。');
+      location.reload();
+    }
+    function restoreModules(){
+      var html = localStorage.getItem('goodyear_modules_html');
+      var grid = document.querySelector('.module-grid');
+      if(html && grid) grid.innerHTML = html;
+      setModuleEditable(false);
+    }
+    document.addEventListener('DOMContentLoaded', function(){
+      applyMetrics(getMetrics());
+      restoreModules();
+    });
     function openClientView(){
       location.hash = '#agent';
       var el = document.getElementById('agent');
